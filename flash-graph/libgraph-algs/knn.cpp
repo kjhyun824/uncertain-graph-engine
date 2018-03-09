@@ -19,8 +19,17 @@
 #include "FGlib.h"
 #include <mutex>
 
+/* KJH : For mmap() */
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+
 using namespace safs;
 using namespace fg;
+
+#define partSize 1000
 
 int key;
 int nResult;
@@ -28,12 +37,7 @@ int nSample;
 int bound;
 int diff;
 
-//pwg *pwgs; // PWGs
-//pwg *currPWG;
-
-//double *probs;
 vertex_id_t sv;
-//std::set<vertex_id_t> *start_set;
 std::set<vertex_id_t> res;
 std::mutex lock;
 
@@ -57,66 +61,103 @@ class pwg_t {
 }
 */
 
-//typedef int vattr_t;
 typedef struct {
     vertex_id_t vid;
-    vertex_id_t prior; // XXX : Which vertex is pointing?
     unsigned int distance; // Vertices distribution
     bool active; //Check the vertex is activated
     bool adaptation; // Distance used for distribution
 } vattr_t;
+
+typedef vattr_t* part_t;
+
+// TODO : pwgs_vertex_attr - (num_vertex, num_sample, partition list) & make folder for that PWG
+// TODO : partition - (buffer, attr) & make file for that PWG's partition
 
 class pwgs_vertex_attr{
     unsigned int num_vertex;
     unsigned int num_sample;
     char* buf;
     vattr_t* attr;
+    part_t* partitions;
 
 public:
     int key;
 
     ~pwgs_vertex_attr(){
-        free(buf);
     }
+
     void init(unsigned int num_sample, unsigned int num_vertex){
+        char *file = NULL;
+        int flag = PROT_WRITE | PROT_READ;
+        int fd;
+        struct stat fileInfo = {0};
+
         this->num_sample = num_sample;
         this->num_vertex = num_vertex;
+        int numParts = ((num_vertex / partSize) == 0) ? (num_vertex / partSize) : ((num_vertex / partSize) + 1);
+        partitions = new part_t[numParts];
 
         key = ~0;
-        buf = (char*) malloc(num_vertex * sizeof(vattr_t));
+        buf = (char*) malloc(partSize * sizeof(vattr_t));
         attr = (vattr_t*) buf;
-        memset(buf, 0x00, num_vertex * sizeof(vattr_t));
-        for(int i=0; i < num_vertex; i++) {
+        for(int i=0; i < partSize; i++) {
             attr[i].vid = i;
-            attr[i].prior = ~0;
             attr[i].distance = ~0;
             attr[i].active = true;
             attr[i].adaptation = false;
         }
+
         for(int i=0; i < num_sample; i++){
-            std::string filename = "attr" + std::to_string(i) + ".txt";
-            FILE* fp=fopen(filename.data(), "w+");
-            fwrite(buf, sizeof(vattr_t), num_vertex, fp);
-            fclose(fp);
+            /* KJH */
+            for(int j = 0; j < numParts; j++) {
+                std::string filename2 = "map" + std::to_string(i) + "_" + std::to_string(j) + ".txt";
+                if((fd=open(filename2.c_str() ,O_RDWR|O_CREAT,0664)) < 0) {
+                    perror("File Open Error");
+                    exit(1);
+                }
+                if(fstat(fd,&fileInfo) == -1) {
+                    perror("Error for getting size");
+                    exit(1);
+                }
+            
+                if((file = (char*) mmap(0,partSize * sizeof(vattr_t), flag, MAP_SHARED, fd, 0)) == NULL) {
+                    perror("mmap error");
+                    exit(1);
+                }
+
+                if(write(fd,buf,partSize*sizeof(vattr_t)) == -1) {
+                    perror("write error");
+                    exit(1);
+                }
+
+                if (msync(file , partSize * sizeof(vattr_t), MS_SYNC) == -1)
+                {
+                    perror("Could not sync the file to disk");
+                }   
+
+                munmap(file, partSize * sizeof(vattr_t));
+
+                close(fd);
+            }
         }
     }
     // Use mmap, file per one partition
     // File descriptor list
 
-    void save(unsigned int key){
+    void save(unsigned int key, int partId){
         assert(this->key == key);
-        std::string filename = "attr" + std::to_string(key) + ".txt";
-        FILE* fp=fopen(filename.data(), "w");
-        fwrite(buf, sizeof(vattr_t), num_vertex, fp);
-        fclose(fp);
+        std::string filename2 = "map" + std::to_string(key) + "_" + std::to_string(partId) + ".txt";
+        int fd = open(filename2.c_str(), O_RDWR);
+        write(fd,buf,partSize * sizeof(vattr_t));;
+        close(fd);
     };
 
-    void load(unsigned int key){
+    void load(unsigned int key, int partId){
         this->key = key;
-        std::string filename = "attr" + std::to_string(key) + ".txt";
-        FILE* fp=fopen(filename.data(), "r");
-        fread(buf, sizeof(vattr_t), num_vertex, fp);
-        fclose(fp);
+        std::string filename2 = "map" + std::to_string(key) + "_" + std::to_string(partId) + ".txt";
+        int fd = open(filename2.c_str(), O_RDWR);
+        read(fd,buf,partSize * sizeof(vattr_t));
+        close(fd);
     };
 
     vattr_t* get_value(vertex_id_t vid){
@@ -131,11 +172,9 @@ namespace
 {
     class distance_message: public vertex_message{
         public:
-            vertex_id_t prior;
             unsigned int distance;
 
-            distance_message(vertex_id_t prior, unsigned int distance): vertex_message(sizeof(distance_message), true){
-                this->prior = prior;
+            distance_message(unsigned int distance): vertex_message(sizeof(distance_message), true){
                 this->distance = distance;
             }
     };
@@ -148,7 +187,6 @@ namespace
 #else
             vertex_id_t vid;
             bool *active; //Check the vertex is activated
-            vertex_id_t *prior; // XXX : Which vertex is pointing?
             unsigned int *distance; // Vertices distribution
             bool *adaptation; // Distance used for distribution
 #endif
@@ -159,51 +197,38 @@ namespace
 #else
                 vid = id;
                 active = new bool[nSample];
-                prior = new vertex_id_t[nSample];
                 distance = new unsigned int[nSample];
                 adaptation = new bool[nSample];
                 for(int i = 0; i < nSample; i++) {
                     distance[i] = ~0;
-                    prior[i] = ~0;
                     active[i] = true;
                     adaptation[i] = false;
                 }
 #endif
-                //distHead = new struct distribution;
                 distHead.next = NULL;
             }
 
             void run(vertex_program &prog) {
-                // Run dijkstra up to current bound
-                // If it's over, save it as start_vertex for next iteration
 #if VATTR_SAVE
                 vertex_id_t vid = prog.get_vertex_id(*this);
                 vattr = pwgs_vattr.get_value(vid);
 
                 if(vid != sv && vattr->distance >= bound) {
-//                    lock.lock();
-//                    start_set[key].insert(vid);
-//                    lock.unlock();
                     return;
                 }
 
                 // For non-visited vertices, request their edge list
                 if (vattr->active) {
-//                    res.insert(vid);
                     directed_vertex_request req(vid, OUT_EDGE);
                     request_partial_vertices(&req, 1);
                 }
 #else
                 if(vid != sv && distance[key] >= bound) {
-//                    lock.lock();
-//                    start_set[key].insert(vid);
-//                    lock.unlock();
                     return;
                 }
 
                 // For non-visited vertices, request their edge list
                 if (active[key]) {
-//                    res.insert(vid);
                     directed_vertex_request req(vid, OUT_EDGE);
                     request_partial_vertices(&req, 1);
                 }
@@ -229,7 +254,6 @@ namespace
                 // Iterates neighbors
                 for (; it_neighbor != it_neighbor_end;) {
                     float prob = *it_data - (int) *it_data;
-                    //unsigned int weight = 1;
                     unsigned int weight = (unsigned int) *it_data;
 
                     unsigned int distance_sum = weight ;
@@ -237,7 +261,7 @@ namespace
                     if (vattr->distance != ~0)
                         distance_sum += vattr->distance;
 
-                    distance_message msg(vertex.get_id(), distance_sum);
+                    distance_message msg(distance_sum);
 
 #define PRECISION 1000
                     float r = rand() % PRECISION;
@@ -245,14 +269,6 @@ namespace
                     if(r <= prob * PRECISION) {
                         prog.send_msg(*it_neighbor, msg);
                     }
-                    /*
-                    if(r <= prob * PRECISION) {
-                        prog.send_msg(*it_neighbor, msg);
-                        probs[key] *= prob; // Accum probability
-                    } else {
-                        probs[key] *= (1.0-prob); // Accum probability
-                    }
-                    */
 
                     it_neighbor += 1;
                     it_data += 1;
@@ -275,7 +291,6 @@ namespace
                 // Iterates neighbors
                 for (; it_neighbor != it_neighbor_end;) {
                     float prob = *it_data - (int) *it_data;
-                    //unsigned int weight = 1;
                     unsigned int weight = (unsigned int) *it_data;
 
                     unsigned int distance_sum = weight ;
@@ -291,14 +306,6 @@ namespace
                     if(r <= prob * PRECISION) {
                         prog.send_msg(*it_neighbor, msg);
                     }
-                    /*
-                    if(r <= prob * PRECISION) {
-                        prog.send_msg(*it_neighbor, msg);
-                        probs[key] *= prob; // Accum probability
-                    } else {
-                        probs[key] *= (1.0-prob); // Accum probability
-                    }
-                    */
 
                     it_neighbor += 1;
                     it_data += 1;
@@ -314,7 +321,6 @@ namespace
 #if VATTR_SAVE
                 if(vattr->distance > w_msg.distance){
                     vattr->distance = w_msg.distance;
-                    vattr->prior = w_msg.prior;
                     vattr->active = true; // Reactivation doesn't need
                     prog.activate_vertex(vid);
                 }
@@ -322,7 +328,6 @@ namespace
 
                 if(distance[key] > w_msg.distance){
                     distance[key] = w_msg.distance;
-                    prior[key] = w_msg.prior;
                     active[key] = true; // Reactivation doesn't need
                     prog.activate_vertex(vid);
                 }
@@ -470,21 +475,11 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     nResult = k;
     nSample = _nSample;
 
-
-//    pwgs = new pwg[nSample];
-
 #if VATTR_SAVE
     pwgs_vattr.init(nSample, fg->get_index_data()->get_max_id()+1);
 #endif
 
-//    start_set = new std::set<vertex_id_t>[nSample];
-    //probs = new double[nSample];
     sv = start_vertex;
-
-    for (int i = 0; i < nSample; i++) {
-//        start_set[i].insert(start_vertex);
-        //probs[i] = 1.0;
-    }
 
     bound = 0;
     diff = 1; // Just for accuracy, Maybe set by user
@@ -493,8 +488,8 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     index = NUMA_graph_index<knn_vertex>::create(fg->get_graph_header());
     graph_engine::ptr graph = fg->create_engine(index);
 
-
-    // KJH
+ 
+    /* KJH */
     vertex_query::ptr avq, rvq;
     avq = vertex_query::ptr(new accum_vertex_query<knn_vertex>());
     rvq = vertex_query::ptr(new res_vertex_query<knn_vertex>());
@@ -504,44 +499,24 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
             // TODO : Load PWG Vertex Attr
             key = i;
 
-//            currPWG = &pwgs[key];
-//            currPWG->load();
 #if VATTR_SAVE
-            pwgs_vattr.load(key);
+            pwgs_vattr.load(key, 0); // TODO : partId instead 0
 #endif
-//            int num_start = start_set[i].size();
-
-//            if (num_start != 0) {
-//                std::set<vertex_id_t>::iterator it = start_set[i].begin();
-//                int idx = 0;
-//                vertex_id_t *_start_set = new vertex_id_t[num_start];
-//
-//                while (true) {
-//                    if (it == start_set[i].end()) break;
-//                    _start_set[idx++] = *it;
-//                    it++;
-//                }
-//
-//                start_set[i].clear();
-//
-//                graph->start(_start_set, num_start);
-//                delete[] _start_set;
             if(start)
                 graph->start(&start_vertex,1);
             else
                 graph->start_all();
             start=false;
             graph->wait4complete();
-//            }
+
             // Calculate distribution for a specific PWG
             graph->query_on_all(avq);
 
             // TODO : Save PWG Vertex Attr
             // Divide two things : According to how many updates have done
             // Many -> Full flush / Small -> Logging
-//            currPWG->save();
 #if VATTR_SAVE
-            pwgs_vattr.save(key);
+            pwgs_vattr.save(key, 0); // TODO : partId instead 0
 #endif
         }
         // Aggregate results from all PWGs
@@ -554,96 +529,3 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
     return res;
 }
-
-/*
-void print_usage()
-{
-    fprintf(stderr,
-            "knn conf_file graph_file index_file [alg-options]\n");
-    graph_conf.print_help();
-    safs::params.print_help();
-}
-
-void run_knn(FG_graph::ptr graph, int argc, char* argv[])
-{
-    int opt;
-    int num_opts = 0;
-    vertex_id_t start_vertex = 0;
-    int num_sample = 1;
-    int k = 1;
-
-    std::string edge_type_str;
-    while ((opt = getopt(argc, argv, "k:s:p:")) != -1) {
-        num_opts++;
-        switch (opt) {
-            case 'k':
-                k = atoi(optarg);
-                num_opts++;
-                break;
-            case 's':
-                start_vertex = atoi(optarg);
-                num_opts++;
-                break;
-            case 'p':
-                num_sample = atoi(optarg);
-                num_opts++;
-                break;
-            default:
-                print_usage();
-                abort();
-        }
-    }
-
-    // KJH
-    struct timeval start, end;
-    gettimeofday(&start,NULL);
-    //std::set<vertex_id_t>  knn(FG_graph::ptr fg, vertex_id_t start_vertex,int k, int num_sample);
-    std::set<vertex_id_t> res = knn(graph, start_vertex, k, num_sample);
-    gettimeofday(&end,NULL);
-
-    std::cout << "[DEBUG] Total Elapsed Time : " << time_diff(start,end) << std::endl;
-    std::cout << "[DEBUG] Num K-NN : " << res.size() << std::endl;
-    std::cout << "[DEBUG] KNN neighbor list: \n";
-
-    std::set<vertex_id_t>::iterator it;
-    for(it = res.begin(); it != res.end(); ++it) {
-        std::cout << "[DEBUG] n.b. : " << *it <<std::endl;
-    }
-}
-
-int main(int argc, char *argv[])
-{
-    argv++;
-    argc--;
-    if (argc < 3) {
-        print_usage();
-        exit(-1);
-    }
-
-    std::string conf_file = argv[0];
-    std::string graph_file = argv[1];
-    std::string index_file = argv[2];
-    // We should increase by 3 instead of 4. getopt() ignores the first
-    // argument in the list.
-    argv += 2;
-    argc -= 2;
-
-    config_map::ptr configs = config_map::create(conf_file);
-    if (configs == NULL)
-        configs = config_map::ptr();
-//    set_log_level(fatal);
-    graph_engine::init_flash_graph(configs);
-    FG_graph::ptr graph;
-    try {
-        graph = FG_graph::create(graph_file, index_file, configs);
-    } catch(std::exception &e) {
-        fprintf(stderr, "%s\n", e.what());
-        exit(-1);
-    }
-    std::cout << "[DEBUG] Vertex Attribute Save-Load : " << VATTR_SAVE << std::endl;
-    run_knn(graph, argc, argv);
-
-    graph_engine::destroy_flash_graph();
-}
-*/
-
