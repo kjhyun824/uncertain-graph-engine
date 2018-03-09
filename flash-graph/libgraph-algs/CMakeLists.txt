@@ -18,4 +18,5 @@ add_library(graph-algs STATIC
 	bfs_graph.cpp
 	betweenness_centrality.cpp
     sem_kmeans.cpp
+    knn.cpp
 )

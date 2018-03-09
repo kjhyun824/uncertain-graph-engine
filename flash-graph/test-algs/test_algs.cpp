@@ -669,6 +669,54 @@ void run_overlap(FG_graph::ptr graph, int argc, char* argv[])
 	}
 }
 
+/* KJH */
+void run_knn(FG_graph::ptr graph, int argc, char* argv[])
+{
+    int opt;
+    int num_opts = 0;
+    vertex_id_t start_vertex = 0;
+    int num_sample = 1;
+    int k = 1;
+
+    std::string edge_type_str;
+    while ((opt = getopt(argc, argv, "k:s:p:")) != -1) {
+        num_opts++;
+        switch (opt) {
+            case 'k':
+                k = atoi(optarg);
+                num_opts++;
+                break;
+            case 's':
+                start_vertex = atoi(optarg);
+                num_opts++;
+                break;
+            case 'p':
+                num_sample = atoi(optarg);
+                num_opts++;
+                break;
+            default:
+                print_usage();
+                abort();
+        }
+    }
+
+    // KJH
+    struct timeval start, end;
+    gettimeofday(&start,NULL);
+    std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex,int k, int num_sample);
+    std::set<vertex_id_t> res = knn(graph, start_vertex, k, num_sample);
+    gettimeofday(&end,NULL);
+
+    std::cout << "[DEBUG] Total Elapsed Time : " << time_diff(start,end) << std::endl;
+    std::cout << "[DEBUG] Num K-NN : " << res.size() << std::endl;
+    std::cout << "[DEBUG] KNN neighbor list: \n";
+
+    std::set<vertex_id_t>::iterator it;
+    for(it = res.begin(); it != res.end(); ++it) {
+        std::cout << "[DEBUG] n.b. : " << *it <<std::endl;
+    }
+}
+
 void run_bfs(FG_graph::ptr graph, int argc, char* argv[])
 {
 	int opt;
@@ -833,6 +881,7 @@ std::string supported_algs[] = {
 	"kcore",
 	"betweenness",
 	"overlap",
+    "knn",
 	"bfs",
 	"louvain",
     "sem_kmeans"
@@ -987,6 +1036,9 @@ int main(int argc, char *argv[])
 	else if (alg == "overlap") {
 		run_overlap(graph, argc, argv);
 	}
+    else if (alg == "knn") {
+      run_knn(graph, argc, argv);
+    }
 	else if (alg == "bfs") {
 		run_bfs(graph, argc, argv);
 	}
