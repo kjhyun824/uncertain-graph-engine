@@ -22,6 +22,9 @@
 
 #include <atomic>
 
+/* KJH */
+#include "pwg.h"
+
 #include "vertex.h"
 #include "vertex_index.h"
 #include "trace_logger.h"
@@ -357,6 +360,15 @@ class graph_engine
 	std::vector<worker_thread *> worker_threads;
 	std::vector<vertex_program::ptr> vprograms;
 
+    /* KJH
+     * TODO : pwgs storing
+     * PWGs class should be made in flash-graph folder
+     */
+    int nSample;
+    int partSize;
+    pwg_t* pwgs;
+    char* attrBuf;
+
 	trace_logger::ptr logger;
 	std::shared_ptr<safs::file_io_factory> graph_factory;
 	int max_processing_vertices;
@@ -373,6 +385,23 @@ public:
 
 	static void init_flash_graph(config_map::ptr configs);
 	static void destroy_flash_graph();
+
+    /* KJH */
+    void setNumSample(int nSample) {
+        this->nSample = nSample;
+    }
+
+    void generatePWGs(int partSize) {
+        this->partSize = partSize;
+        int numParts = (get_max_vertex_id() + partSize - 1) / partSize; // KJH TODO : Right?
+
+        this->pwgs = new pwg_t[nSample];
+        attrBuf = new char[numParts*partSize*sizeof(attribute_t)];
+
+        for(int i = 0; i < nSample; i++) {
+            pwgs[i].init(i+1, numParts, partSize, attrBuf);
+        }
+    }
     
     /**
      * \brief Constructor usable by inheriting classes.
