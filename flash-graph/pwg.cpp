@@ -20,10 +20,15 @@ void pwg_t::init(int seed, int numParts, int partSize, char* attrBuf) {
     attrPartArr->init(numParts, seed, partSize, attrBuf); 
 }
 
+void pwg_t::destroy() {
+    attrPartArr->destroy();
+    delete attrPartArr;
+}
+
 void pwg_t::save(int partId) {
-    attrPartArr->getPartition(partId)->save(seed, partSize, attrBuf+(partId * partSize * sizeof(attribute_t)));
+    attrPartArr->getPartition(partId)->save(partSize, attrBuf+(partId * partSize * sizeof(attribute_t)));
 }
 
 void pwg_t::load(int partId) {
-    attrPartArr->getPartition(partId)->load(seed, partSize, attrBuf+(partId * partSize * sizeof(attribute_t)));
+    attrPartArr->getPartition(partId)->load(partSize, attrBuf+(partId * partSize * sizeof(attribute_t)));
 }

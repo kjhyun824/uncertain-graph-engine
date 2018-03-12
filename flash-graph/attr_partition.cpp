@@ -17,6 +17,7 @@ attrPart_t::~attrPart_t() {
 }
 
 void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
+    this->seed = seed;
     this->partId = partId;
     
     /* attrBuf initialize value */
@@ -66,16 +67,24 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
     close(fd);
 }
 
-void attrPart_t::save(int seed, int partSize, char* attrBuf) {
+void attrPart_t::save(int partSize, char* attrBuf) {
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     int fd = open(filename.c_str(), O_RDWR);
     write(fd, attrBuf, partSize * sizeof(attribute_t));
     close(fd);
 }
 
-void attrPart_t::load(int seed, int partSize, char* attrBuf) {
+void attrPart_t::load(int partSize, char* attrBuf) {
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     int fd = open(filename.c_str(), O_RDWR);
     read(fd, attrBuf, partSize * sizeof(attribute_t));
     close(fd);
+}
+
+void attrPart_t::destroy() {
+    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
+    
+    if(remove(filename.c_str()) != 0) {
+        perror("Error deleting file");
+    }
 }

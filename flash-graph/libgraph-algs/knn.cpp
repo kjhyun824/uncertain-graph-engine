@@ -258,7 +258,7 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     }
 
     //KJH TODO : destroy generated PWGs including attributes
-    //graph->destroyPWGs();
+    graph->destroyPWGs();
 
     return res;
 }

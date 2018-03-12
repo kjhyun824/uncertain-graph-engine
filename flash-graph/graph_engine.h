@@ -404,10 +404,14 @@ public:
     }
 
     //KJH TODO : remove all the attribute files & variables 
-    /*
     void destroyPWGs() {
+        delete [] attrBuf;
+
+        for(int i = 0; i < nSample; i++) {
+            pwgs[i].destroy();
+        }
+        delete [] pwgs;
     }
-    */
 
     attribute_t* getAttrBuf(vertex_id_t vid) {
         return (attribute_t*) attrBuf + (vid * sizeof(attribute_t));

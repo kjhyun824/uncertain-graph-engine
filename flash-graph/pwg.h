@@ -19,6 +19,8 @@ class pwg_t {
         void save(int partId);
         void load(int partId);
 
+        void destroy();
+
         int getSeed() {
             return seed;
         }

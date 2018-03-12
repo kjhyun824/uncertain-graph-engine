@@ -15,6 +15,8 @@ class attrPartArr_t {
         void init(int numParts, int seed, int partSize, char* attrBuf);
         attrPart_t* getPartition(int partId);
 
+        void destroy();
+
 };
 }
 #endif
