@@ -402,6 +402,16 @@ public:
             pwgs[i].init(i+1, numParts, partSize, attrBuf);
         }
     }
+
+    //KJH TODO : remove all the attribute files & variables 
+    /*
+    void destroyPWGs() {
+    }
+    */
+
+    attribute_t* getAttrBuf(vertex_id_t vid) {
+        return (attribute_t*) attrBuf + (vid * sizeof(attribute_t));
+    }
     
     /**
      * \brief Constructor usable by inheriting classes.

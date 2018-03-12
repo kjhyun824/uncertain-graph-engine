@@ -23,6 +23,7 @@ using namespace safs;
 using namespace fg;
 
 #define partSize 1000
+#define PRECISION 1000
 
 int key;
 int nResult;
@@ -54,77 +55,74 @@ namespace
     class knn_vertex: public compute_directed_vertex
     {
         public:
+            vertex_id_t vid;
             distribution distHead; // Distribution from source
             knn_vertex(vertex_id_t id): compute_directed_vertex(id) {
+                this->vid = id;
                 distHead.next = NULL;
             }
 
             void run(vertex_program &prog) {
-                /*
-                if(vid != sv && distance[key] >= bound) {
+                vertex_id_t vid = prog.get_vertex_id(*this);
+                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
+                if(vid != sv && vattr->distance >= bound) { // KJH TODO : Wow! It works!
                     return;
                 }
 
-                // For non-visited vertices, request their edge list
-                if (active[key]) {
+                if(vattr->active) {
                     directed_vertex_request req(vid, OUT_EDGE);
                     request_partial_vertices(&req, 1);
                 }
-                */
             }
 
             void run(vertex_program &prog, const page_vertex &vertex){
-                /*
-                active[key] = false;
+                vertex_id_t vid = prog.get_vertex_id(*this);
+                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
 
-                int num_dests = vertex.get_num_edges(OUT_EDGE);
-                if (num_dests == 0)
-                    return;
+                vattr->active = false;
 
-                srand(vid*(key+1)); // Give seed to generate random specific number; TODO: Add time instance to give randomness
+                int numDests = vertex.get_num_edges(OUT_EDGE);
+                if(numDests == 0) return;
 
-                edge_iterator it_neighbor = vertex.get_neigh_begin(OUT_EDGE);
-                edge_iterator it_neighbor_end = vertex.get_neigh_end(OUT_EDGE);
+                srand(vid*(key+1));
 
-                safs::page_byte_array::const_iterator<float> it_data = ((const page_directed_vertex &) vertex).get_data_begin<float>(OUT_EDGE);
+                edge_iterator itNeighbor = vertex.get_neigh_begin(OUT_EDGE);
+                edge_iterator itNeighborEnd = vertex.get_neigh_end(OUT_EDGE);
 
-                // Iterates neighbors
-                for (; it_neighbor != it_neighbor_end;) {
-                    float prob = *it_data - (int) *it_data;
-                    unsigned int weight = (unsigned int) *it_data;
+                safs::page_byte_array::const_iterator<float> itData = ((const page_directed_vertex &) vertex).get_data_begin<float>(OUT_EDGE);
 
-                    unsigned int distance_sum = weight ;
+                for(; itNeighbor != itNeighborEnd;) {
+                    float prob = *itData - (int) *itData;
+                    unsigned int weight = (unsigned int) *itData;
 
-                    if (distance[key] != ~0)
-                        distance_sum += distance[key];
+                    unsigned int distanceSum = weight;
 
-                    distance_message msg(vertex.get_id(), distance_sum);
+                    if(vattr->distance != ~0)
+                        distanceSum += vattr->distance;
 
-#define PRECISION 1000
+                    distance_message msg(distanceSum);
+
                     float r = rand() % PRECISION;
 
                     if(r <= prob * PRECISION) {
-                        prog.send_msg(*it_neighbor, msg);
+                        prog.send_msg(*itNeighbor, msg);
                     }
 
-                    it_neighbor += 1;
-                    it_data += 1;
+                    itNeighbor += 1;
+                    itData += 1;
                 }
-                */
             }
 
             void run_on_message(vertex_program &prog, const vertex_message &msg) {
-                /*
                 vertex_id_t vid = prog.get_vertex_id(*this);
+                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
 
                 const distance_message &w_msg = (const distance_message&) msg;
-
-                if(distance[key] > w_msg.distance){
-                    distance[key] = w_msg.distance;
-                    active[key] = true; // Reactivation doesn't need
+                if(vattr->distance > w_msg.distance) {
+                    vattr->distance = w_msg.distance;
+                    vattr->active = true;
                     prog.activate_vertex(vid);
                 }
-                */
             }
     };
 
@@ -137,28 +135,24 @@ namespace
             }
 
             virtual void run(graph_engine &graph, compute_vertex &v) {
-                /*
                 vertex_type &knn_v = (vertex_type &) v;
-                // 1. check all samples that has adapted before (adaptation)
-                // 2. Check the distance has set (distance)
-                // 3. If it has set, add to distribution
-                // 3.1 If it's in distribution, just add the PWG of the sample world
-                // 3.2 If it's not, append one more node and add the PWG's prob to list
-
                 double add_prob = 1.0 / (double) nSample;
-                if(!knn_v.adaptation[key] && knn_v.distance[key] != ~0) {
-                    int currDist = knn_v.distance[key];
+
+                vertex_id_t vid = knn_v.vid;
+                attribute_t* vattr = graph.getAttrBuf(vid);
+
+                if(!vattr->adaptation && vattr->distance != ~0) {
+                    int currDist = vattr->distance;
+                    
                     distribution *curr = &knn_v.distHead;
                     while(curr->next != NULL) {
-
                         if(curr->next->dist <= currDist) break;
                         curr = curr->next;
                     }
 
-                    //std::cout <<curr->next<<"\n";
-                    if(curr->next != NULL && curr->next->dist == currDist) { // Already distribution
+                    if(curr->next != NULL && curr->next->dist == currDist) {
                         curr->next->probability += add_prob;
-                    } else { // New one
+                    } else {
                         distribution *node = new struct distribution;
                         node->dist = currDist;
                         node->probability = add_prob;
@@ -166,10 +160,8 @@ namespace
                         curr->next = node;
                     }
 
-                    //std::cout << currDist << " " <<curr->next->probability<< " "<<curr->next->dist<<"\n";
-                    knn_v.adaptation[key] = true;
+                    vattr->adaptation = true;
                 }
-                */
             }
 
             virtual void merge(graph_engine &graph, vertex_query::ptr q) {
@@ -188,13 +180,18 @@ namespace
             }
 
             virtual void run(graph_engine &graph, compute_vertex &v) {
-                /*
-                vertex_id_t t_vid = knn_v.get_id();
+                if(res.size() >= nResult) return;
+
+                vertex_type &knn_v = (vertex_type &) v;
+                vertex_id_t t_vid = knn_v.vid;
+                attribute_t* vattr = graph.getAttrBuf(t_vid);
+
                 if(res.find(t_vid) == res.end()) {
                     distribution *curr = &knn_v.distHead;
                     double probSum = 0.0;
                     while(curr->next != NULL) {
                         probSum += curr->next->probability;
+
                         if(probSum > 0.5) break;
                         curr = curr->next;
                     }
@@ -207,7 +204,6 @@ namespace
                         }
                     }
                 }
-                */
             }
 
             virtual void merge(graph_engine &graph, vertex_query::ptr q) {
@@ -260,6 +256,9 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
         bound += diff;
     }
+
+    //KJH TODO : destroy generated PWGs including attributes
+    //graph->destroyPWGs();
 
     return res;
 }

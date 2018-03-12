@@ -517,6 +517,12 @@ int worker_thread::process_activated_vertices(int max)
 		graph->process_vertices(num);
 	}
 
+    /* KJH
+     * TODO : Call save & load
+     * Find out active vertices' partitions 
+     * request attributes for the partitions.
+     */
+
 	for (int i = 0; i < num; i++) {
 		compute_vertex_pointer info = process_vertex_buf[i];
 		// We execute the pre-run to determine if the vertex has completed
