@@ -18,6 +18,7 @@ class pwg_t {
         void init(int seed, int numParts, int partSize, char* attrBuf);
         void save(int partId);
         void load(int partId);
+        void loadAll();
 
         void destroy();
 

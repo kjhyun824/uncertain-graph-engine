@@ -364,6 +364,7 @@ class graph_engine
      * TODO : pwgs storing
      * PWGs class should be made in flash-graph folder
      */
+    int currSeed;
     int nSample;
     int partSize;
     pwg_t* pwgs;
@@ -387,13 +388,29 @@ public:
 	static void destroy_flash_graph();
 
     /* KJH */
+    void setCurrSeed(int seed) {
+        this->currSeed = seed;
+    }
+
+    int getCurrSeed() {
+        return currSeed;
+    }
+
     void setNumSample(int nSample) {
         this->nSample = nSample;
     }
 
+    int getNumSample() {
+        return nSample;
+    }
+
+    int getPartSize() {
+        return partSize;
+    }
+
     void generatePWGs(int partSize) {
         this->partSize = partSize;
-        int numParts = (get_max_vertex_id() + partSize - 1) / partSize; // KJH TODO : Right?
+        int numParts = (get_max_vertex_id() + partSize - 1) / partSize; 
 
         this->pwgs = new pwg_t[nSample];
         attrBuf = new char[numParts*partSize*sizeof(attribute_t)];
@@ -403,7 +420,10 @@ public:
         }
     }
 
-    //KJH TODO : remove all the attribute files & variables 
+    pwg_t* getPWG(int seed) {
+        return &(pwgs[seed]);
+    }
+
     void destroyPWGs() {
         delete [] attrBuf;
 
@@ -412,6 +432,7 @@ public:
         }
         delete [] pwgs;
     }
+
 
     attribute_t* getAttrBuf(vertex_id_t vid) {
         return (attribute_t*) attrBuf + (vid * sizeof(attribute_t));

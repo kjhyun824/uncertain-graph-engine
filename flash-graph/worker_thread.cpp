@@ -522,12 +522,29 @@ int worker_thread::process_activated_vertices(int max)
      * Find out active vertices' partitions 
      * request attributes for the partitions.
      */
+    int partId = -1;
+    int partSize = graph->getPartSize();
+    pwg_t* currPWG = graph->getPWG(graph->getCurrSeed());
 
 	for (int i = 0; i < num; i++) {
 		compute_vertex_pointer info = process_vertex_buf[i];
 		// We execute the pre-run to determine if the vertex has completed
 		// in the current iteration.
 		vertex_program &curr_vprog = get_vertex_program(info.is_part());
+
+        /* KJH 
+         * Save & Load part
+         */
+        vertex_id_t vid = curr_vprog.get_vertex_id(info);
+        if(partId != (vid / partSize)) {
+            if(partId != -1) {
+                currPWG->save(partId);
+            }
+
+            partId = (vid / partSize);
+            currPWG->load(partId);
+        }
+
 		start_run_vertex(info);
 		curr_vprog.run(*info);
 		bool issued_reqs = finish_run_vertex(info);
@@ -536,6 +553,9 @@ int worker_thread::process_activated_vertices(int max)
 		if (!issued_reqs)
 			complete_vertex(info);
 	}
+
+    currPWG->save(partId);
+
 	return num;
 }
 

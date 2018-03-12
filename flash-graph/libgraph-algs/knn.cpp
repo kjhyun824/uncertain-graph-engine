@@ -25,7 +25,7 @@ using namespace fg;
 #define partSize 1000
 #define PRECISION 1000
 
-int key;
+int seed;
 int nResult;
 int nSample;
 int bound;
@@ -84,7 +84,7 @@ namespace
                 int numDests = vertex.get_num_edges(OUT_EDGE);
                 if(numDests == 0) return;
 
-                srand(vid*(key+1));
+                srand(vid*(seed+1));
 
                 edge_iterator itNeighbor = vertex.get_neigh_begin(OUT_EDGE);
                 edge_iterator itNeighborEnd = vertex.get_neigh_end(OUT_EDGE);
@@ -184,7 +184,7 @@ namespace
 
                 vertex_type &knn_v = (vertex_type &) v;
                 vertex_id_t t_vid = knn_v.vid;
-                attribute_t* vattr = graph.getAttrBuf(t_vid);
+                //attribute_t* vattr = graph.getAttrBuf(t_vid);
 
                 if(res.find(t_vid) == res.end()) {
                     distribution *curr = &knn_v.distHead;
@@ -238,7 +238,9 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     bool start=true;
     while(res.size() < k) {
         for(int i=0; i < nSample; i++) {
-            key = i;
+            seed = i;
+
+            graph->setCurrSeed(seed);
 
             if(start) {
                 graph->start(&start_vertex,1);
@@ -249,6 +251,8 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
             graph->wait4complete();
 
             // Calculate distribution for a specific PWG
+
+            graph->getPWG(seed)->loadAll();
             graph->query_on_all(avq);
 
         }
