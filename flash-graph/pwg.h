@@ -19,6 +19,7 @@ class pwg_t {
         void save(int partId);
         void load(int partId);
         void loadAll();
+        void saveAll();
 
         void destroy();
 

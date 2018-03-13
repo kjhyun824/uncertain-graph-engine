@@ -360,7 +360,7 @@ namespace
                 if(!knn_v.vattr->adaptation && knn_v.vattr->distance != ~0) {
                     int currDist = knn_v.vattr->distance;
 
-                    distribution *curr = &knn_v.distHead;
+                    distribution *curr = &(knn_v.distHead);
                     while(curr->next != NULL) {
                         if(curr->next->dist <= currDist) break;
                         curr = curr->next;

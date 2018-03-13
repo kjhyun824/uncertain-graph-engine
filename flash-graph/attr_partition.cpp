@@ -23,7 +23,7 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
     /* attrBuf initialize value */
     attribute_t* temp = (attribute_t*) attrBuf;
     for(int i = 0; i < partSize; i++) {
-        attr_init(&temp[i], partId * partSize + i);
+        attr_init(&(temp[i]), partId * partSize + i);
     }
 
     char *file = NULL;

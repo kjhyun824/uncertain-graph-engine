@@ -245,16 +245,17 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
             if(start) {
                 graph->start(&start_vertex,1);
                 start = false;
-            }
-            else
+            } else
                 graph->start_all();
+
             graph->wait4complete();
 
             // Calculate distribution for a specific PWG
 
             graph->getPWG(seed)->loadAll();
+            //printf("[DEBUG] Load All Done\n");
             graph->query_on_all(avq);
-
+            //printf("[DEBUG] query avq done]n");
         }
         graph->query_on_all(rvq);
 

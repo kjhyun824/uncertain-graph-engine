@@ -435,7 +435,7 @@ public:
 
 
     attribute_t* getAttrBuf(vertex_id_t vid) {
-        return (attribute_t*) attrBuf + (vid * sizeof(attribute_t));
+        return (attribute_t*) (attrBuf + (vid * sizeof(attribute_t)));
     }
     
     /**

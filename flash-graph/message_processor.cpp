@@ -140,7 +140,12 @@ void message_processor::process_msg(message &msg, bool check_steal)
 		// We only need to check the first message. All messages are
 		// of the same type.
 		if (!check_steal && !v_msgs[0]->is_multicast()) {
+            /* KJH
+             * Here to update vattr?
+             */
+
 			curr_vprog.run_on_messages((const vertex_message **) v_msgs, num);
+
 			for (int i = 0; i < num; i++) {
 				local_vid_t id = v_msgs[i]->get_dest();
 				if (v_msgs[i]->is_activate())
@@ -171,6 +176,8 @@ void message_processor::process_msg(message &msg, bool check_steal)
 				owner.activate_vertex(id);
 		}
 	}
+
+    curr_vprog.get_graph().getPWG(curr_vprog.get_graph().getCurrSeed())->saveAll();
 }
 
 void message_processor::process_msgs()

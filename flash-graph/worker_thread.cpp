@@ -537,9 +537,11 @@ int worker_thread::process_activated_vertices(int max)
          */
         vertex_id_t vid = curr_vprog.get_vertex_id(info);
         if(partId != (vid / partSize)) {
+            /*
             if(partId != -1) {
                 currPWG->save(partId);
             }
+            */
 
             partId = (vid / partSize);
             currPWG->load(partId);
@@ -554,7 +556,9 @@ int worker_thread::process_activated_vertices(int max)
 			complete_vertex(info);
 	}
 
-    currPWG->save(partId);
+    if(partId != -1) {
+        currPWG->save(partId);
+    }
 
 	return num;
 }

@@ -38,3 +38,9 @@ void pwg_t::loadAll() {
         attrPartArr->getPartition(i)->load(partSize, attrBuf+(i * partSize * sizeof(attribute_t)));
     }
 }
+
+void pwg_t::saveAll() {
+    for(int i = 0; i < numParts; i++) {
+        attrPartArr->getPartition(i)->save(partSize, attrBuf+(i * partSize * sizeof(attribute_t)));
+    }
+}
