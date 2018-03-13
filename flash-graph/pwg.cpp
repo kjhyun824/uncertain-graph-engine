@@ -30,12 +30,12 @@ void pwg_t::save(int partId) {
 }
 
 void pwg_t::load(int partId) {
-    attrPartArr->getPartition(partId)->load(partSize, attrBuf+(partId * partSize * sizeof(attribute_t)));
+    attrPartArr->getPartition(partId)->load(partSize, attrBuf+(partId * partSize * sizeof(attribute_t)), false);
 }
 
 void pwg_t::loadAll() {
     for(int i = 0; i < numParts; i++) {
-        attrPartArr->getPartition(i)->load(partSize, attrBuf+(i * partSize * sizeof(attribute_t)));
+        attrPartArr->getPartition(i)->load(partSize, attrBuf+(i * partSize * sizeof(attribute_t)), true);
     }
 }
 

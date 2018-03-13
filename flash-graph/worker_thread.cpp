@@ -556,9 +556,11 @@ int worker_thread::process_activated_vertices(int max)
 			complete_vertex(info);
 	}
 
+    /*
     if(partId != -1) {
         currPWG->save(partId);
     }
+    */
 
 	return num;
 }

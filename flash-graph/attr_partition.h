@@ -23,14 +23,15 @@ class attrPart_t {
     private:
         int seed;
         int partId;
+        bool dirty;
 
     public:
         attrPart_t();
         ~attrPart_t();
         void init(int seed, int partId, int partSize, char* attrBuf);
         void save(int partSize, char* attrBuf);
-        void load(int partSize, char* attrBuf);
-
+        void load(int partSize, char* attrBuf, bool allOrNot);
+        
         void destroy();
 };
 }
