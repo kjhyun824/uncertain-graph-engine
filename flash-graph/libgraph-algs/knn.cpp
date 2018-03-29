@@ -83,7 +83,9 @@ namespace
                 vattr->active = false;
 
                 int numDests = vertex.get_num_edges(OUT_EDGE);
-                if(numDests == 0) return;
+                if(numDests == 0) {
+                    return;
+                }
 
                 srand(vid*(seed+1));
 
@@ -117,6 +119,8 @@ namespace
             void run_on_message(vertex_program &prog, const vertex_message &msg) {
                 vertex_id_t vid = prog.get_vertex_id(*this);
                 attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
+
+                prog.get_graph().getPWG(seed)->load(vid/partSize);
 
                 const distance_message &w_msg = (const distance_message&) msg;
                 if(vattr->distance > w_msg.distance) {
@@ -244,11 +248,14 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             graph->setCurrSeed(seed);
 
-            graph->getPWG(seed)->loadAll();
+            //graph->getPWG(seed)->loadAll();
             if(start) {
+                graph->getPWG(seed)->load(start_vertex / partSize);
                 attribute_t* vattr = graph->getAttrBuf(start_vertex);
                 vattr->active = true;
                 vattr->distance = 0;
+                graph->getPWG(seed)->save(start_vertex / partSize);
+
                 graph->start(&start_vertex,1);
             } else {
                 graph->start_all();
@@ -258,9 +265,9 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             // Calculate distribution for a specific PWG
 
-            //graph->getPWG(seed)->loadAll();
+            graph->getPWG(seed)->loadAll();
             graph->query_on_all(avq);
-            graph->getPWG(seed)->saveAll();
+            //graph->getPWG(seed)->saveAll();
         }
         start = false;
         graph->query_on_all(rvq);

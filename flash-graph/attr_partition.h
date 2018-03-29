@@ -30,7 +30,7 @@ class attrPart_t {
         ~attrPart_t();
         void init(int seed, int partId, int partSize, char* attrBuf);
         void save(int seed, int partSize, char* attrBuf);
-        void load(int seed, int partSize, char* attrBuf, bool allOrNot);
+        void load(int seed, int partSize, char* attrBuf, bool isAll);
         
         void destroy(int seed);
 };

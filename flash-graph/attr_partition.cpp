@@ -73,7 +73,8 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
 }
 
 void attrPart_t::save(int seed, int partSize, char* attrBuf) {
-    if(!loaded) return;
+    if(!loaded) 
+        return;
 
     loaded = false;
 
@@ -87,18 +88,18 @@ void attrPart_t::save(int seed, int partSize, char* attrBuf) {
     }
 }
 
-void attrPart_t::load(int seed, int partSize, char* attrBuf, bool allOrNot) {
-    if(loaded) return;
+void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
+    if(loaded) 
+        return;
 
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     int fd = open(filename.c_str(), O_RDONLY);
     read(fd, attrBuf, partSize * sizeof(attribute_t));
-
     loaded = true;
-
     close(fd);
 
-    dirty = true;
+    if(!isAll)
+        dirty = true;
 }
 
 void attrPart_t::destroy(int seed) {
