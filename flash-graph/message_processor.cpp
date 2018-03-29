@@ -140,10 +140,7 @@ void message_processor::process_msg(message &msg, bool check_steal)
 		// We only need to check the first message. All messages are
 		// of the same type.
 		if (!check_steal && !v_msgs[0]->is_multicast()) {
-            /* KJH
-             * Here to update vattr?
-             */
-
+            // KJH : This is called processing vertices
 			curr_vprog.run_on_messages((const vertex_message **) v_msgs, num);
 
 			for (int i = 0; i < num; i++) {
@@ -177,6 +174,7 @@ void message_processor::process_msg(message &msg, bool check_steal)
 		}
 	}
 
+    /* KJH */
     curr_vprog.get_graph().getPWG(curr_vprog.get_graph().getCurrSeed())->saveAll();
 }
 
