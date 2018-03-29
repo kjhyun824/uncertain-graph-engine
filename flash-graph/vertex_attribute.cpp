@@ -19,12 +19,12 @@ void attrPartArr_t::init(int numParts, int seed, int partSize, char* attrBuf) {
 }
 
 attrPart_t* attrPartArr_t::getPartition(int partId) {
-    return &(attrPartitions[partId]); // KJH TODO : Right expression?
+    return &(attrPartitions[partId]); 
 }
 
-void attrPartArr_t::destroy() {
+void attrPartArr_t::destroy(int seed) {
     for(int i = 0; i < numParts; i++) {
-        attrPartitions[i].destroy();
+        attrPartitions[i].destroy(seed);
     }
 
     delete [] attrPartitions;

@@ -419,7 +419,7 @@ public:
         attrBuf = new char[numParts*partSize*sizeof(attribute_t)];
 
         for(int i = 0; i < nSample; i++) {
-            pwgs[i].init(i+1, numParts, partSize, attrBuf);
+            pwgs[i].init(i, numParts, partSize, attrBuf);
         }
     }
 

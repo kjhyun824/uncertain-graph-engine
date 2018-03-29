@@ -65,7 +65,8 @@ namespace
             void run(vertex_program &prog) {
                 vertex_id_t vid = prog.get_vertex_id(*this);
                 attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
-                if(vid != sv && vattr->distance >= bound) { // KJH TODO : Wow! It works!
+
+                if(vid != sv && vattr->distance >= bound && vattr->distance != ~0) { 
                     return;
                 }
 
@@ -121,7 +122,7 @@ namespace
                 if(vattr->distance > w_msg.distance) {
                     vattr->distance = w_msg.distance;
                     vattr->active = true;
-                    prog.activate_vertex(vid);
+                    //prog.activate_vertex(vid);
                 }
             }
     };
@@ -222,7 +223,7 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     sv = start_vertex;
 
     bound = 0;
-    diff = 1; // Just for accuracy, Maybe set by user
+    diff = 5; // Just for accuracy, Maybe set by user
 
     graph_index::ptr index;
     index = NUMA_graph_index<knn_vertex>::create(fg->get_graph_header());
@@ -243,21 +244,25 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             graph->setCurrSeed(seed);
 
+            graph->getPWG(seed)->loadAll();
             if(start) {
+                attribute_t* vattr = graph->getAttrBuf(start_vertex);
+                vattr->active = true;
+                vattr->distance = 0;
                 graph->start(&start_vertex,1);
-                start = false;
-            } else
+            } else {
                 graph->start_all();
+            }
 
             graph->wait4complete();
 
             // Calculate distribution for a specific PWG
 
-            graph->getPWG(seed)->loadAll();
-            //printf("[DEBUG] Load All Done\n");
+            //graph->getPWG(seed)->loadAll();
             graph->query_on_all(avq);
-            //printf("[DEBUG] query avq done\n");
+            graph->getPWG(seed)->saveAll();
         }
+        start = false;
         graph->query_on_all(rvq);
 
         bound += diff;

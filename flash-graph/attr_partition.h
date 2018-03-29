@@ -21,7 +21,6 @@ typedef struct {
 
 class attrPart_t {
     private:
-        int seed;
         int partId;
         bool dirty;
         bool loaded;
@@ -30,10 +29,10 @@ class attrPart_t {
         attrPart_t();
         ~attrPart_t();
         void init(int seed, int partId, int partSize, char* attrBuf);
-        void save(int partSize, char* attrBuf);
-        void load(int partSize, char* attrBuf, bool allOrNot);
+        void save(int seed, int partSize, char* attrBuf);
+        void load(int seed, int partSize, char* attrBuf, bool allOrNot);
         
-        void destroy();
+        void destroy(int seed);
 };
 }
 #endif

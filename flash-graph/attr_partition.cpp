@@ -6,7 +6,7 @@ using namespace fg;
 void attr_init(attribute_t* temp, int vid) {
     temp->vid = vid;
     temp->distance = ~0;
-    temp->active = true;
+    temp->active = false;
     temp->adaptation = false;
 }
 
@@ -17,9 +17,9 @@ attrPart_t::~attrPart_t() {
 }
 
 void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
-    this->seed = seed;
     this->partId = partId;
     this->dirty = false;
+    this->loaded = false;
     
     /* attrBuf initialize value */
     attribute_t* temp = (attribute_t*) attrBuf;
@@ -39,6 +39,7 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
         exit(1);
     }
 
+    /*
     if(fstat(fd, &fileInfo) == -1) {
         perror("Error for getting size");
         exit(1);
@@ -49,12 +50,14 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
         perror("mmap error");
         exit(1);
     }
+    */
 
     if(write(fd, attrBuf, partSize * sizeof(attribute_t)) == -1) {
         perror("write error");
         exit(1);
     }
 
+    /*
     if(msync(file, partSize * sizeof(attribute_t), MS_SYNC) == -1) {
         perror("Could not sync the file to disk");
         exit(1);
@@ -64,12 +67,16 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
         perror("munmap error");
         exit(1);
     }
+    */
 
     close(fd);
 }
 
-void attrPart_t::save(int partSize, char* attrBuf) {
+void attrPart_t::save(int seed, int partSize, char* attrBuf) {
     if(!loaded) return;
+
+    loaded = false;
+
     if(dirty) {
         std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
         int fd = open(filename.c_str(), O_WRONLY);
@@ -77,12 +84,12 @@ void attrPart_t::save(int partSize, char* attrBuf) {
         close(fd);
 
         dirty = false;
-        loaded = false;
     }
 }
 
-void attrPart_t::load(int partSize, char* attrBuf, bool allOrNot) {
+void attrPart_t::load(int seed, int partSize, char* attrBuf, bool allOrNot) {
     if(loaded) return;
+
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     int fd = open(filename.c_str(), O_RDONLY);
     read(fd, attrBuf, partSize * sizeof(attribute_t));
@@ -91,12 +98,10 @@ void attrPart_t::load(int partSize, char* attrBuf, bool allOrNot) {
 
     close(fd);
 
-    if(allOrNot) {
-        dirty = true;
-    }
+    dirty = true;
 }
 
-void attrPart_t::destroy() {
+void attrPart_t::destroy(int seed) {
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     
     if(remove(filename.c_str()) != 0) {
