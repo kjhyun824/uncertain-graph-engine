@@ -14,6 +14,11 @@ void pwg_t::init(int seed, int numParts, int partSize, char* attrBuf) {
     this->seed = seed;
     this->numParts = numParts;
     this->partSize = partSize;
+
+    /* KJH
+     * TODO : attrBuf doesn't set here
+     * Get the address everytime
+     */
     this->attrBuf = attrBuf;
 
     attrPartArr = new attrPartArr_t();

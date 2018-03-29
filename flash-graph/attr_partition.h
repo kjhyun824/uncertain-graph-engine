@@ -24,6 +24,7 @@ class attrPart_t {
         int seed;
         int partId;
         bool dirty;
+        bool loaded;
 
     public:
         attrPart_t();

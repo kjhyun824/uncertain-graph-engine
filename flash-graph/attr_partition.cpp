@@ -69,20 +69,26 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
 }
 
 void attrPart_t::save(int partSize, char* attrBuf) {
+    if(!loaded) return;
     if(dirty) {
         std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
-        int fd = open(filename.c_str(), O_RDWR);
+        int fd = open(filename.c_str(), O_WRONLY);
         write(fd, attrBuf, partSize * sizeof(attribute_t));
         close(fd);
 
         dirty = false;
+        loaded = false;
     }
 }
 
 void attrPart_t::load(int partSize, char* attrBuf, bool allOrNot) {
+    if(loaded) return;
     std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
-    int fd = open(filename.c_str(), O_RDWR);
+    int fd = open(filename.c_str(), O_RDONLY);
     read(fd, attrBuf, partSize * sizeof(attribute_t));
+
+    loaded = true;
+
     close(fd);
 
     if(allOrNot) {

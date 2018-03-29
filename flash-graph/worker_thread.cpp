@@ -534,9 +534,11 @@ int worker_thread::process_activated_vertices(int max)
 
         /* KJH 
          * Save & Load part
+         * TODO : Why vid is negative???????????
          */
-        vertex_id_t vid = curr_vprog.get_vertex_id(info);
+        vertex_id_t vid = curr_vprog.get_vertex_id(*info);
         if(partId != (vid / partSize)) {
+            
             /*
             if(partId != -1) {
                 currPWG->save(partId);
@@ -555,12 +557,6 @@ int worker_thread::process_activated_vertices(int max)
 		if (!issued_reqs)
 			complete_vertex(info);
 	}
-
-    /*
-    if(partId != -1) {
-        currPWG->save(partId);
-    }
-    */
 
 	return num;
 }

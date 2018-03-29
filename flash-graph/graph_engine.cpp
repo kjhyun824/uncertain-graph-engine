@@ -651,6 +651,7 @@ void graph_engine::init_threads(vertex_program_creater::ptr creater)
 	}
 	// Prepare the worker threads.
 	int num_threads = get_num_threads();
+    
 	for (int i = 0; i < num_threads; i++) {
 		vertex_program::ptr new_prog;
 		if (creater)

@@ -368,6 +368,9 @@ class graph_engine
     int nSample;
     int partSize;
     pwg_t* pwgs;
+    /* KJH
+     * This attrBuf should be distributed to threads
+     */
     char* attrBuf;
 
 	trace_logger::ptr logger;
