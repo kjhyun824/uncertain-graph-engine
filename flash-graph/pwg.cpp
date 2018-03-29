@@ -45,3 +45,7 @@ void pwg_t::saveAll() {
         attrPartArr->getPartition(i)->save(seed, partSize, attrBuf+(i * partSize * sizeof(attribute_t)));
     }
 }
+
+attrPart_t* pwg_t::getPart(int partId) {
+    return attrPartArr->getPartition(partId);
+}

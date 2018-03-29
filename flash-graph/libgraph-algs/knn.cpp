@@ -28,15 +28,15 @@ using namespace fg;
 int seed;
 int nResult;
 int nSample;
-int bound;
-int diff;
+unsigned int bound;
+unsigned int diff;
 
 vertex_id_t sv;
 std::set<vertex_id_t> res;
 std::mutex lock;
 
 struct distribution {
-    int dist;
+    unsigned int dist;
     double probability;
     struct distribution* next; // Linked list format
 };
@@ -95,7 +95,7 @@ namespace
                 safs::page_byte_array::const_iterator<float> itData = ((const page_directed_vertex &) vertex).get_data_begin<float>(OUT_EDGE);
 
                 for(; itNeighbor != itNeighborEnd;) {
-                    float prob = *itData - (int) *itData;
+                    float prob = *itData - (unsigned int) *itData;
                     unsigned int weight = (unsigned int) *itData;
 
                     unsigned int distanceSum = weight;
@@ -120,10 +120,9 @@ namespace
                 vertex_id_t vid = prog.get_vertex_id(*this);
                 attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
 
-                prog.get_graph().getPWG(seed)->load(vid/partSize);
-
                 const distance_message &w_msg = (const distance_message&) msg;
                 if(vattr->distance > w_msg.distance) {
+                    prog.get_graph().getPWG(seed)->load(vid/partSize);
                     vattr->distance = w_msg.distance;
                     vattr->active = true;
                     //prog.activate_vertex(vid);
@@ -147,7 +146,7 @@ namespace
                 attribute_t* vattr = graph.getAttrBuf(vid);
 
                 if(!vattr->adaptation && vattr->distance != ~0) {
-                    int currDist = vattr->distance;
+                    unsigned int currDist = vattr->distance;
                     
                     distribution *curr = &knn_v.distHead;
                     while(curr->next != NULL) {
@@ -234,7 +233,14 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     graph_engine::ptr graph = fg->create_engine(index);
 
     graph->setNumSample(nSample);
+
+    struct timeval startTime, endTime;
+
+    gettimeofday(&startTime, NULL);
     graph->generatePWGs(partSize);
+    gettimeofday(&endTime, NULL);
+
+    long diffTime = (endTime.tv_sec*1e6 + endTime.tv_usec) - (startTime.tv_sec*1e6 + startTime.tv_usec);
 
     /* KJH */
     vertex_query::ptr avq, rvq;
@@ -275,7 +281,10 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
         bound += diff;
     }
 
+    graph->getPWG(0)->getPart(0)->printTime();
+
     //KJH TODO : destroy generated PWGs including attributes
+    printf("[DEBUG] Generating PWGs : %lu\n",diffTime);
     graph->destroyPWGs();
 
     return res;

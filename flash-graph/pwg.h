@@ -21,6 +21,8 @@ class pwg_t {
         void loadAll();
         void saveAll();
 
+        attrPart_t* getPart(int partId);
+
         void destroy();
 
         int getSeed() {

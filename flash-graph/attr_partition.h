@@ -33,6 +33,8 @@ class attrPart_t {
         void load(int seed, int partSize, char* attrBuf, bool isAll);
         
         void destroy(int seed);
+
+        void printTime();
 };
 }
 #endif
