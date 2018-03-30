@@ -12,7 +12,7 @@ class attrPartArr_t {
     public:
         attrPartArr_t();
         ~attrPartArr_t();
-        void init(int numParts, int seed, int partSize, char* attrBuf);
+        void init(int* fd, int numParts, int seed, int partSize, char* attrBuf);
         attrPart_t* getPartition(int partId);
 
         void destroy(int seed);

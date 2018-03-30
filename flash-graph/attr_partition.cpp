@@ -9,6 +9,8 @@ using namespace fg;
 long loadTime[16];
 long saveTime[16];
 
+int numPart = 9;
+
 void attr_init(attribute_t* temp, int vid) {
     temp->vid = vid;
     temp->distance = ~0;
@@ -37,52 +39,52 @@ void attrPart_t::init(int seed, int partId, int partSize, char* attrBuf) {
         attr_init(&(temp[i]), partId * partSize + i);
     }
 
-    char *file = NULL;
-    int flag = PROT_WRITE | PROT_READ;
-    int fd;
-    struct stat fileInfo = {0};
-
-    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
-
-    if((fd = open(filename.c_str(), O_RDWR|O_CREAT, 0664)) < 0) {
-        perror("File Open Error");
-        exit(1);
-    }
-
-    /*
-    if(fstat(fd, &fileInfo) == -1) {
-        perror("Error for getting size");
-        exit(1);
-    }
-
-    // KJH TODO : Change size of file correctly
-    if((file = (char*) mmap(0, partSize * sizeof(attribute_t), flag, MAP_SHARED, fd, 0)) == NULL) { 
-        perror("mmap error");
-        exit(1);
-    }
-    */
-
-    if(write(fd, attrBuf, partSize * sizeof(attribute_t)) == -1) {
-        perror("write error");
-        exit(1);
-    }
-
-    /*
-    if(msync(file, partSize * sizeof(attribute_t), MS_SYNC) == -1) {
-        perror("Could not sync the file to disk");
-        exit(1);
-    }
-
-    if(munmap(file, partSize * sizeof(attribute_t)) == -1) {
-        perror("munmap error");
-        exit(1);
-    }
-    */
-
-    close(fd);
+//    char *file = NULL;
+//    int flag = PROT_WRITE | PROT_READ;
+//    int fd;
+//    struct stat fileInfo = {0};
+//
+//    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
+//
+//    if((fd = open(filename.c_str(), O_RDWR|O_CREAT, 0664)) < 0) {
+//        perror("File Open Error");
+//        exit(1);
+//    }
+//
+//    /*
+//    if(fstat(fd, &fileInfo) == -1) {
+//        perror("Error for getting size");
+//        exit(1);
+//    }
+//
+//    // KJH TODO : Change size of file correctly
+//    if((file = (char*) mmap(0, partSize * sizeof(attribute_t), flag, MAP_SHARED, fd, 0)) == NULL) {
+//        perror("mmap error");
+//        exit(1);
+//    }
+//    */
+//
+//    if(write(fd, attrBuf, partSize * sizeof(attribute_t)) == -1) {
+//        perror("write error");
+//        exit(1);
+//    }
+//
+//    /*
+//    if(msync(file, partSize * sizeof(attribute_t), MS_SYNC) == -1) {
+//        perror("Could not sync the file to disk");
+//        exit(1);
+//    }
+//
+//    if(munmap(file, partSize * sizeof(attribute_t)) == -1) {
+//        perror("munmap error");
+//        exit(1);
+//    }
+//    */
+//
+//    close(fd);
 }
 
-void attrPart_t::save(int seed, int partSize, char* attrBuf) {
+void attrPart_t::save(int*fd, int seed, int partSize, char* attrBuf) {
     if(!loaded) 
         return;
 
@@ -94,10 +96,10 @@ void attrPart_t::save(int seed, int partSize, char* attrBuf) {
         struct timeval start, end; 
         gettimeofday(&start, NULL);
 
-        std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
-        int fd = open(filename.c_str(), O_WRONLY);
-        write(fd, attrBuf, partSize * sizeof(attribute_t));
-        close(fd);
+        int part_off = partSize * sizeof(attribute_t);
+        int pwg_size = numPart * partSize * sizeof(attribute_t);
+        lseek(fd[seed%2], seed * pwg_size + partId * part_off,SEEK_SET);
+        write(fd[seed%2], attrBuf, partSize * sizeof(attribute_t));
 
         dirty = false;
 
@@ -106,7 +108,7 @@ void attrPart_t::save(int seed, int partSize, char* attrBuf) {
     }
 }
 
-void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
+void attrPart_t::load(int*fd, int seed, int partSize, char* attrBuf, bool isAll) {
     if(loaded) 
         return;
 
@@ -115,11 +117,14 @@ void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
-    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
-    int fd = open(filename.c_str(), O_RDONLY);
-    read(fd, attrBuf, partSize * sizeof(attribute_t));
+
+    int part_off = partSize * sizeof(attribute_t);
+    int pwg_size = numPart * partSize * sizeof(attribute_t);
+    lseek(fd[seed%2], seed * pwg_size + partId * part_off,SEEK_SET);
+    read(fd[seed%2], attrBuf, partSize * sizeof(attribute_t));
+
+
     loaded = true;
-    close(fd);
 
     if(!isAll)
         dirty = true;
@@ -129,11 +134,11 @@ void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
 }
 
 void attrPart_t::destroy(int seed) {
-    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
+//    std::string filename = "map" + std::to_string(seed) + "_" + std::to_string(partId) + ".txt";
     
-    if(remove(filename.c_str()) != 0) {
-        perror("Error deleting file");
-    }
+//    if(remove(filename.c_str()) != 0) {
+//        perror("Error deleting file");
+//    }
 }
 
 void attrPart_t::printTime() {
