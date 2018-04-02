@@ -90,7 +90,7 @@ void attrPart_t::save(int seed, int partSize, char* attrBuf) {
 
     if(dirty) {
         worker_thread *t = (worker_thread*) thread::get_curr_thread();
-        int tid = t->get_worker_id();
+        int w_id= t->get_worker_id();
         struct timeval start, end; 
         gettimeofday(&start, NULL);
 
@@ -102,7 +102,8 @@ void attrPart_t::save(int seed, int partSize, char* attrBuf) {
         dirty = false;
 
         gettimeofday(&end, NULL);
-        saveTime[tid] += (end.tv_sec*1e6+ end.tv_usec) - (start.tv_sec*1e6 + start.tv_usec);
+        long diff = (end.tv_sec*1e6+ end.tv_usec) - (start.tv_sec*1e6 + start.tv_usec);
+        saveTime[w_id] += diff;
     }
 }
 
@@ -111,7 +112,7 @@ void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
         return;
 
     worker_thread *t = (worker_thread*) thread::get_curr_thread();
-    int tid = t->get_worker_id();
+    int w_id = t->get_worker_id();
     struct timeval start, end;
     gettimeofday(&start, NULL);
 
@@ -121,11 +122,13 @@ void attrPart_t::load(int seed, int partSize, char* attrBuf, bool isAll) {
     loaded = true;
     close(fd);
 
-    if(!isAll)
-        dirty = true;
+    //if(!isAll)
+    dirty = true;
 
     gettimeofday(&end, NULL);
-    loadTime[tid] += (end.tv_sec*1e6+ end.tv_usec) - (start.tv_sec*1e6 + start.tv_usec);
+
+    long diff = (end.tv_sec*1e6+ end.tv_usec) - (start.tv_sec*1e6 + start.tv_usec);
+    loadTime[w_id] += diff;
 }
 
 void attrPart_t::destroy(int seed) {

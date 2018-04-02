@@ -700,7 +700,7 @@ void run_knn(FG_graph::ptr graph, int argc, char* argv[])
         }
     }
 
-    // KJH
+    /* KJH */
     struct timeval start, end;
     gettimeofday(&start,NULL);
     std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex,int k, int num_sample);

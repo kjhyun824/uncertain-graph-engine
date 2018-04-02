@@ -56,10 +56,20 @@ namespace
     {
         public:
             vertex_id_t vid;
-            distribution distHead; // Distribution from source
+            distribution *distHead; // Distribution from source
             knn_vertex(vertex_id_t id): compute_directed_vertex(id) {
                 this->vid = id;
-                distHead.next = NULL;
+                distHead = new distribution;
+                distHead->next = NULL;
+            }
+
+            ~knn_vertex() {
+                while(distHead->next != NULL) {
+                    distribution* temp = distHead->next;
+                    distHead->next = distHead->next->next;
+                    delete temp;
+                }
+                delete distHead;
             }
 
             void run(vertex_program &prog) {
@@ -122,7 +132,7 @@ namespace
 
                 const distance_message &w_msg = (const distance_message&) msg;
                 if(vattr->distance > w_msg.distance) {
-                    prog.get_graph().getPWG(seed)->load(vid/partSize);
+                    //prog.get_graph().getPWG(seed)->load(vid/partSize);
                     vattr->distance = w_msg.distance;
                     vattr->active = true;
                     //prog.activate_vertex(vid);
@@ -148,7 +158,7 @@ namespace
                 if(!vattr->adaptation && vattr->distance != ~0) {
                     unsigned int currDist = vattr->distance;
                     
-                    distribution *curr = &knn_v.distHead;
+                    distribution *curr = knn_v.distHead;
                     while(curr->next != NULL) {
                         if(curr->next->dist <= currDist) break;
                         curr = curr->next;
@@ -191,7 +201,7 @@ namespace
                 attribute_t* vattr = graph.getAttrBuf(t_vid);
 
                 if(res.find(t_vid) == res.end()) {
-                    distribution *curr = &knn_v.distHead;
+                    distribution *curr = knn_v.distHead;
                     double probSum = 0.0;
                     while(curr->next != NULL) {
                         probSum += curr->next->probability;
@@ -254,13 +264,13 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             graph->setCurrSeed(seed);
 
-            //graph->getPWG(seed)->loadAll();
+            graph->getPWG(seed)->loadAll();
             if(start) {
-                graph->getPWG(seed)->load(start_vertex / partSize);
+                //graph->getPWG(seed)->load(start_vertex / partSize);
                 attribute_t* vattr = graph->getAttrBuf(start_vertex);
                 vattr->active = true;
                 vattr->distance = 0;
-                graph->getPWG(seed)->save(start_vertex / partSize);
+                //graph->getPWG(seed)->save(start_vertex / partSize);
 
                 graph->start(&start_vertex,1);
             } else {
@@ -271,9 +281,9 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             // Calculate distribution for a specific PWG
 
-            graph->getPWG(seed)->loadAll();
+            //graph->getPWG(seed)->loadAll();
             graph->query_on_all(avq);
-            //graph->getPWG(seed)->saveAll();
+            graph->getPWG(seed)->saveAll();
         }
         start = false;
         graph->query_on_all(rvq);
