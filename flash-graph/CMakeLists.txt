@@ -22,10 +22,8 @@ add_library(graph STATIC
 	graph_config.cpp
 	fg_utils.cpp
 	fg_sparse_matrix.cpp
-    pwg.cpp
-    vertex_attribute.cpp
-    attr_partition.cpp
-)
+        vertex_attribute.cpp
+		)
 
 find_package(ZLIB)
 subdirs(libgraph-algs

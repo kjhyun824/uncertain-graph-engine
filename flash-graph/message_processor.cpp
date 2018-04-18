@@ -175,7 +175,7 @@ void message_processor::process_msg(message &msg, bool check_steal)
 	}
 
     /* KJH */
-    curr_vprog.get_graph().getPWG(curr_vprog.get_graph().getCurrSeed())->saveAll();
+//    curr_vprog.get_graph().getPWG(curr_vprog.get_graph().getCurrSeed())->saveAll();
 }
 
 void message_processor::process_msgs()

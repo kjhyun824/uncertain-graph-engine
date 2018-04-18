@@ -522,9 +522,9 @@ int worker_thread::process_activated_vertices(int max)
      * Find out active vertices' partitions 
      * request attributes for the partitions.
      */
-    int partId = -1;
-    int partSize = graph->getPartSize();
-    pwg_t* currPWG = graph->getPWG(graph->getCurrSeed());
+//    int partId = -1;
+//    int partSize = graph->getPartSize();
+//    pwg_t* currPWG = graph->getPWG(graph->getCurrSeed());
 
 	for (int i = 0; i < num; i++) {
 		compute_vertex_pointer info = process_vertex_buf[i];
@@ -536,11 +536,11 @@ int worker_thread::process_activated_vertices(int max)
          * Save & Load part
          * TODO : Why vid is negative???????????
          */
-        vertex_id_t vid = curr_vprog.get_vertex_id(*info);
-        if(partId != (vid / partSize)) {
-            partId = (vid / partSize);
-            currPWG->load(partId);
-        }
+//        vertex_id_t vid = curr_vprog.get_vertex_id(*info);
+//        if(partId != (vid / partSize)) {
+//            partId = (vid / partSize);
+//            currPWG->load(partId);
+//        }
 
 		start_run_vertex(info);
 		curr_vprog.run(*info);

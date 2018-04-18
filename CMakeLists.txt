@@ -29,7 +29,7 @@ configure_file (
 	"${PROJECT_BINARY_DIR}/config.h"
 )
 
-SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++0x -O3 -fPIC" )
+SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -std=c++0x -O0 -fPIC" )
 
 execute_process(COMMAND bash ${PROJECT_SOURCE_DIR}/get_num_nodes.sh OUTPUT_VARIABLE num_nodes)
 message("#node: ${num_nodes}")

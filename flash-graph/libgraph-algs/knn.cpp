@@ -18,6 +18,7 @@
 #include "graph_config.h"
 #include "FGlib.h"
 #include <mutex>
+#include "vertex_attribute.h"
 
 using namespace safs;
 using namespace fg;
@@ -35,15 +36,37 @@ vertex_id_t sv;
 std::set<vertex_id_t> res;
 std::mutex lock;
 
+pwgs_vertex_attribute pwgs_vattr;
+
 struct distribution {
     unsigned int dist;
     double probability;
     struct distribution* next; // Linked list format
 };
 
+
 namespace
 {
-    class distance_message: public vertex_message{
+	class knn_vertex_attribute: public vertex_attribute{
+	public:
+		unsigned int distance;
+		bool active;
+		bool adaptation;
+
+		virtual size_t getSize(){
+			return sizeof(knn_vertex_attribute);
+		};
+		virtual void initValue(){
+			distance = ~0;
+			active = false;
+			adaptation = false;
+		};
+		virtual void copy(char* dst){
+			memcpy(dst, this, sizeof(knn_vertex_attribute));
+		};
+	};
+
+	class distance_message: public vertex_message{
         public:
             unsigned int distance;
 
@@ -64,7 +87,7 @@ namespace
 
             void run(vertex_program &prog) {
                 vertex_id_t vid = prog.get_vertex_id(*this);
-                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(vid);
 
                 if(vid != sv && vattr->distance >= bound && vattr->distance != ~0) { 
                     return;
@@ -78,7 +101,7 @@ namespace
 
             void run(vertex_program &prog, const page_vertex &vertex){
                 vertex_id_t vid = prog.get_vertex_id(*this);
-                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(vid);
 
                 vattr->active = false;
 
@@ -118,11 +141,11 @@ namespace
 
             void run_on_message(vertex_program &prog, const vertex_message &msg) {
                 vertex_id_t vid = prog.get_vertex_id(*this);
-                attribute_t* vattr = prog.get_graph().getAttrBuf(vid);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(vid);
 
                 const distance_message &w_msg = (const distance_message&) msg;
                 if(vattr->distance > w_msg.distance) {
-                    prog.get_graph().getPWG(seed)->load(vid/partSize);
+//                    prog.get_graph().getPWG(seed)->load(vid/partSize);
                     vattr->distance = w_msg.distance;
                     vattr->active = true;
                     //prog.activate_vertex(vid);
@@ -143,7 +166,7 @@ namespace
                 double add_prob = 1.0 / (double) nSample;
 
                 vertex_id_t vid = knn_v.vid;
-                attribute_t* vattr = graph.getAttrBuf(vid);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(vid);
 
                 if(!vattr->adaptation && vattr->distance != ~0) {
                     unsigned int currDist = vattr->distance;
@@ -188,7 +211,7 @@ namespace
 
                 vertex_type &knn_v = (vertex_type &) v;
                 vertex_id_t t_vid = knn_v.vid;
-                attribute_t* vattr = graph.getAttrBuf(t_vid);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(t_vid);
 
                 if(res.find(t_vid) == res.end()) {
                     distribution *curr = &knn_v.distHead;
@@ -232,13 +255,20 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     index = NUMA_graph_index<knn_vertex>::create(fg->get_graph_header());
     graph_engine::ptr graph = fg->create_engine(index);
 
-    graph->setNumSample(nSample);
+	unsigned int num_vertex = graph->get_max_vertex_id() + 1;
+	knn_vertex_attribute vattr;
+	vattr.initValue();
+	pwgs_vattr.init(_nSample, num_vertex, vattr);
+
+	pwgs_vertex_attribute_io_req pwgs_vattr_io = pwgs_vertex_attribute_io_req(&pwgs_vattr, true);
+
+    graph->setPwgsVattr(&pwgs_vattr);
 
     struct timeval startTime, endTime;
 
-    gettimeofday(&startTime, NULL);
-    graph->generatePWGs(partSize);
-    gettimeofday(&endTime, NULL);
+//    gettimeofday(&startTime, NULL);
+//    graph->generatePWGs(partSize);
+//    gettimeofday(&endTime, NULL);
 
     long diffTime = (endTime.tv_sec*1e6 + endTime.tv_usec) - (startTime.tv_sec*1e6 + startTime.tv_usec);
 
@@ -252,15 +282,18 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
         for(int i=0; i < nSample; i++) {
             seed = i;
 
-            graph->setCurrSeed(seed);
+          graph->setCurrSeed(seed);
 
-            //graph->getPWG(seed)->loadAll();
+//			pwgs_vattr_io.loadPWG(seed);
             if(start) {
-                graph->getPWG(seed)->load(start_vertex / partSize);
-                attribute_t* vattr = graph->getAttrBuf(start_vertex);
+				pwgs_vattr_io.loadPartByVertex(seed, start_vertex);
+//                graph->getPWG(seed)->load(start_vertex / partSize);
+				knn_vertex_attribute* vattr = (knn_vertex_attribute*)pwgs_vattr.getVertexAttributeInPwgBuf(start_vertex);
+
                 vattr->active = true;
                 vattr->distance = 0;
-                graph->getPWG(seed)->save(start_vertex / partSize);
+				pwgs_vattr_io.savePartByVertex(seed, start_vertex);
+//                graph->getPWG(seed)->save(start_vertex / partSize);
 
                 graph->start(&start_vertex,1);
             } else {
@@ -271,9 +304,9 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
 
             // Calculate distribution for a specific PWG
 
-            graph->getPWG(seed)->loadAll();
+//            graph->getPWG(seed)->loadAll();
             graph->query_on_all(avq);
-            //graph->getPWG(seed)->saveAll();
+			pwgs_vattr_io.savePWG(seed);
         }
         start = false;
         graph->query_on_all(rvq);
@@ -281,11 +314,11 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
         bound += diff;
     }
 
-    graph->getPWG(0)->getPart(0)->printTime();
+//    graph->getPWG(0)->getPart(0)->printTime();
 
     //KJH TODO : destroy generated PWGs including attributes
     printf("[DEBUG] Generating PWGs : %lu\n",diffTime);
-    graph->destroyPWGs();
+//    graph->destroyPWGs();
 
     return res;
 }

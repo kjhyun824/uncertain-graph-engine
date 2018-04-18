@@ -22,9 +22,6 @@
 
 #include <atomic>
 
-/* KJH */
-#include "pwg.h"
-
 #include "vertex.h"
 #include "vertex_index.h"
 #include "trace_logger.h"
@@ -34,6 +31,7 @@
 #include "graph_config.h"
 #include "vertex_request.h"
 #include "vertex_program.h"
+#include "vertex_attribute.h"
 
 namespace safs
 {
@@ -364,14 +362,16 @@ class graph_engine
      * TODO : pwgs storing
      * PWGs class should be made in flash-graph folder
      */
-    int currSeed;
-    int nSample;
-    int partSize;
-    pwg_t* pwgs;
+    unsigned int currSeed;
+
+//    int nSample;
+//    int partSize;
+//    pwg_t* pwgs;
     /* KJH
      * This attrBuf should be distributed to threads
      */
-    char* attrBuf[2];
+//    char* attrBuf[2];
+	pwgs_vertex_attribute* pwgs_vattr;
 
 	trace_logger::ptr logger;
 	std::shared_ptr<safs::file_io_factory> graph_factory;
@@ -391,57 +391,65 @@ public:
 	static void destroy_flash_graph();
 
     /* KJH */
-    void setCurrSeed(int seed) {
+    void setCurrSeed(unsigned int seed) {
         this->currSeed = seed;
     }
 
-    int getCurrSeed() {
+	unsigned int getCurrSeed() {
         return currSeed;
     }
 
-    void setNumSample(int nSample) {
-        this->nSample = nSample;
-    }
+	void setPwgsVattr(pwgs_vertex_attribute* pwgs_vattr) {
+		this->pwgs_vattr = pwgs_vattr;
+	}
 
-    int getNumSample() {
-        return nSample;
-    }
-
-    int getPartSize() {
-        return partSize;
-    }
-
-    void generatePWGs(int partSize) {
-        this->partSize = partSize;
-        int numParts = (get_max_vertex_id() + partSize - 1) / partSize; 
-
-        this->pwgs = new pwg_t[nSample];
-        attrBuf[0] = new char[numParts*partSize*sizeof(attribute_t)];
-		attrBuf[1] = new char[numParts*partSize*sizeof(attribute_t)];
-
-        for(int i = 0; i < nSample; i++) {
-            pwgs[i].init(i, numParts, partSize, attrBuf[currSeed%2]);
-        }
-    }
-
-    pwg_t* getPWG(int seed) {
-        return &(pwgs[seed]);
-    }
-
-    void destroyPWGs() {
-        delete [] attrBuf[0];
-		delete [] attrBuf[1];
-
-        for(int i = 0; i < nSample; i++) {
-            pwgs[i].destroy();
-        }
-        delete [] pwgs;
-    }
-
-
-    attribute_t* getAttrBuf(vertex_id_t vid) {
-        return (attribute_t*) (attrBuf[currSeed%2] + (vid * sizeof(attribute_t)));
-    }
+	pwgs_vertex_attribute* getPwgsVattr() {
+		return pwgs_vattr;
+	}
+//
+//    void setNumSample(int nSample) {
+//        this->nSample = nSample;
+//    }
+//
+//    int getNumSample() {
+//        return nSample;
+//    }
+//
+//    int getPartSize() {
+//        return partSize;
+//    }
+//
+//    void generatePWGs(int partSize) {
+//        this->partSize = partSize;
+//        int numParts = (get_max_vertex_id() + partSize - 1) / partSize;
+//
+//        this->pwgs = new pwg_t[nSample];
+//        attrBuf[0] = new char[numParts*partSize*sizeof(attribute_t)];
+//		attrBuf[1] = new char[numParts*partSize*sizeof(attribute_t)];
+//
+//        for(int i = 0; i < nSample; i++) {
+//            pwgs[i].init(i, numParts, partSize, attrBuf[currSeed%2]);
+//        }
+//    }
+//
+//    pwg_t* getPWG(int seed) {
+//        return &(pwgs[seed]);
+//    }
+//
+//    void destroyPWGs() {
+//        delete [] attrBuf[0];
+//		delete [] attrBuf[1];
+//
+//        for(int i = 0; i < nSample; i++) {
+//            pwgs[i].destroy();
+//        }
+//        delete [] pwgs;
+//    }
+//
+//
+//    attribute_t* getAttrBuf(vertex_id_t vid) {
+//        return (attribute_t*) (attrBuf[currSeed%2] + (vid * sizeof(attribute_t)));
+//    }
     
     /**
      * \brief Constructor usable by inheriting classes.
