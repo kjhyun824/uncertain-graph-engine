@@ -373,7 +373,7 @@ class graph_engine
     /* KJH
      * This attrBuf should be distributed to threads
      */
-    char* attrBuf;
+    char* attrBuf[2];
 
 	trace_logger::ptr logger;
 	std::shared_ptr<safs::file_io_factory> graph_factory;
@@ -418,10 +418,11 @@ public:
         int numParts = (get_max_vertex_id() + partSize - 1) / partSize; 
 
         this->pwgs = new pwg_t[nSample];
-        attrBuf = new char[numParts*partSize*sizeof(attribute_t)];
+        attrBuf[0] = new char[numParts*partSize*sizeof(attribute_t)];
+		attrBuf[1] = new char[numParts*partSize*sizeof(attribute_t)];
 
         for(int i = 0; i < nSample; i++) {
-            pwgs[i].init(i, numParts, partSize, attrBuf);
+            pwgs[i].init(i, numParts, partSize, attrBuf[currSeed%2]);
         }
     }
 
@@ -472,7 +473,8 @@ public:
     }
 
     void destroyPWGs() {
-        delete [] attrBuf;
+        delete [] attrBuf[0];
+		delete [] attrBuf[1];
 
         for(int i = 0; i < nSample; i++) {
             pwgs[i].destroy();
@@ -482,7 +484,7 @@ public:
 
 
     attribute_t* getAttrBuf(vertex_id_t vid) {
-        return (attribute_t*) (attrBuf + (vid * sizeof(attribute_t)));
+        return (attribute_t*) (attrBuf[currSeed%2] + (vid * sizeof(attribute_t)));
     }
     
     /**
