@@ -35,6 +35,9 @@ class attrPart_t {
         void destroy(int seed);
 
         void printTime();
+        bool isDirty() {
+            return dirty;
+        }
 };
 }
 #endif

@@ -2,6 +2,7 @@
 #define __PWG_H__
 
 #include "vertex_attribute.h"
+#include <set>
 
 namespace fg{
 class pwg_t {
@@ -13,6 +14,8 @@ class pwg_t {
         attrPartArr_t* attrPartArr;
 
     public:
+        std::set<vertex_id_t> activatedSet;
+
         pwg_t();
         ~pwg_t();
         void init(int seed, int numParts, int partSize, char* attrBuf);

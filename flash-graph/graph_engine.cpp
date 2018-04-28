@@ -757,6 +757,11 @@ bool graph_engine::progress_first_level()
 
 bool graph_engine::progress_next_level()
 {
+    /* KJH
+     * TODO : Grouping
+     * Maybe need to implement here
+     * Grouping vertices based on activations
+     */
 	static atomic_number<long> tot_num_activates;
 	static atomic_integer num_threads;
 	// We have to make sure all threads have reach here, so we can switch
@@ -867,11 +872,13 @@ class query_thread: public thread
 	graph_engine &graph;
 	vertex_query::ptr query;
 	int part_id;
+    bool isAll;
 public:
 	query_thread(graph_engine &_graph, vertex_query::ptr query, int part_id,
-			int node_id): thread("query_thread", node_id), graph(_graph) {
+			int node_id, bool isAll): thread("query_thread", node_id), graph(_graph) {
 		this->query = query;
 		this->part_id = part_id;
+        this->isAll = isAll;
 	}
 
 	void run();
@@ -885,12 +892,26 @@ void query_thread::run()
 {
 	size_t part_size = graph.get_partitioner()->get_part_size(part_id,
 			graph.get_num_vertices());
-	// We only iterate over the vertices in the local partition.
-	for (vertex_id_t id = 0; id < part_size; id++) {
-		local_vid_t local_id(id);
-		compute_vertex &v = graph.get_vertex(part_id, local_id);
-		query->run(graph, v);
-	}
+    /* KJH 
+     * Make the partition size same then, make whether the thread run or not 
+    if(!isAll && graph.getPWG(graph.getCurrSeed())->getPart(part_id)->isDirty()) 
+        return;
+     */
+        
+    for (vertex_id_t id = 0; id < part_size; id++) {
+        /* KJH 
+         * TODO : Check all the verices whether the partition that includes the vertex is dirty or not
+         */
+        local_vid_t local_id(id);
+        compute_vertex &v = graph.get_vertex(part_id, local_id);
+
+        vertex_id_t vid = v.get_id();
+        int attrPartId = vid / graph.getPartSize();
+        if(!isAll && graph.getPWG(graph.getCurrSeed())->getPart(attrPartId)->isDirty())
+            continue;
+
+        query->run(graph, v);
+    }
 	stop();
 }
 
@@ -899,7 +920,25 @@ void graph_engine::query_on_all(vertex_query::ptr query)
 	std::vector<query_thread *> threads(get_num_threads());
 	for (size_t i = 0; i < threads.size(); i++) {
 		threads[i] = new query_thread(*this, query->clone(),
-				i, i % num_nodes);
+				i, i % num_nodes, true);
+		threads[i]->start();
+	}
+	for (size_t i = 0; i < threads.size(); i++) {
+		threads[i]->join();
+		query->merge(*this, threads[i]->get_query());
+		delete threads[i];
+	}
+}
+
+/* KJH 
+ * TODO : Split vertex queries
+ */
+void graph_engine::query_on_part(vertex_query::ptr query)
+{
+	std::vector<query_thread *> threads(get_num_threads());
+	for (size_t i = 0; i < threads.size(); i++) {
+		threads[i] = new query_thread(*this, query->clone(),
+				i, i % num_nodes, false);
 		threads[i]->start();
 	}
 	for (size_t i = 0; i < threads.size(); i++) {

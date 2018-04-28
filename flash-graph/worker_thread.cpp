@@ -507,6 +507,8 @@ int worker_thread::process_activated_vertices(int max)
 
     /* KJH
      * TODO : Save or Load start vertices
+     * TODO : Grouping
+     * Process activated vertices in "Group"!!!
      */
 	process_vertex_buf.resize(max);
 	int num = curr_activated_vertices->fetch(process_vertex_buf.data(), max);

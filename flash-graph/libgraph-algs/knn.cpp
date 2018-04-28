@@ -259,7 +259,11 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
     bool start=true;
 
     while(res.size() < k) {
+        graph->resetSeeds();
+
         for(int i=0; i < nSample; i++) {
+            /* TODO : Find next seed with Jaccard Similarity */
+            seed = graph->findNextSeed();
             seed = i;
 
             graph->setCurrSeed(seed);
@@ -282,7 +286,7 @@ std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int
             // Calculate distribution for a specific PWG
 
             //graph->getPWG(seed)->loadAll();
-            graph->query_on_all(avq);
+            graph->query_on_part(avq);
             graph->getPWG(seed)->saveAll();
         }
         start = false;
