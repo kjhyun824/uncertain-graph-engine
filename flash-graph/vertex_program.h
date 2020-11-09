@@ -159,7 +159,7 @@ public:
 	const worker_thread &get_thread() const {
 		return *t;
 	}
-    
+
     /**
      * \brief Get a pointer to the `graph_engine`.
      *  \return A pointer to the `graph_engine`.

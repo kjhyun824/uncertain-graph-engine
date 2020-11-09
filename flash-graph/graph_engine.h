@@ -368,7 +368,12 @@ class graph_engine
     int nSample;
     int partSize;
     pwg_t* pwgs;
-    char* attrBuf;
+    std::vector<int> seeds;
+    std::set<vertex_id_t> activatedBefore;
+    /* KJH
+     * This attrBuf should be distributed to threads
+     */
+    char* attrBuf[2];
 
 	trace_logger::ptr logger;
 	std::shared_ptr<safs::file_io_factory> graph_factory;
@@ -413,19 +418,63 @@ public:
         int numParts = (get_max_vertex_id() + partSize - 1) / partSize; 
 
         this->pwgs = new pwg_t[nSample];
-        attrBuf = new char[numParts*partSize*sizeof(attribute_t)];
+        attrBuf[0] = new char[numParts*partSize*sizeof(attribute_t)];
+		attrBuf[1] = new char[numParts*partSize*sizeof(attribute_t)];
 
         for(int i = 0; i < nSample; i++) {
-            pwgs[i].init(i+1, numParts, partSize, attrBuf);
+            pwgs[i].init(i, numParts, partSize, attrBuf[currSeed%2]);
         }
     }
 
     pwg_t* getPWG(int seed) {
         return &(pwgs[seed]);
     }
+    
+    int findNextSeed() {
+        double maxSim = -1;
+        int maxSeed= -1;
+
+        
+        if(seeds.size() == nSample) { // For first PWG to run
+            maxSeed = 0;
+        } else {
+            for(int i = 0; i < seeds.size(); i++) {
+                // Jaccard Similarity = (Intersection) / (Union)
+                std::set<vertex_id_t> v_intersection, v_union;
+                std::set_intersection(pwgs[seeds[i]].activatedSet.begin(), pwgs[seeds[i]].activatedSet.end(), activatedBefore.begin(), activatedBefore.end(), std::inserter(v_intersection, v_intersection.begin())); 
+                std::set_union(pwgs[seeds[i]].activatedSet.begin(), pwgs[seeds[i]].activatedSet.end(), activatedBefore.begin(), activatedBefore.end(), std::inserter(v_union,v_union.begin())); 
+                double jaccard = ((double) v_intersection.size()) / ((double) v_union.size());
+
+                if(jaccard > 0.5) { // 0.5 need to be replaced to user-defined threshold
+                    maxSeed= seeds[i];
+                    break;
+                } else {
+                    if (maxSim < jaccard) {
+                        maxSeed = seeds[i];
+                        maxSim = jaccard;
+                    }
+                }
+            }
+        }
+
+        setCurrSeed(maxSeed);
+        seeds.erase(seeds.begin() + maxSeed);
+        
+        activatedBefore.clear();
+        activatedBefore = pwgs[maxSeed].activatedSet;
+        return maxSeed;
+    }
+
+    void resetSeeds() {
+        seeds.clear();
+        for(int i = 0; i < nSample; i++) {
+            seeds.insert(seeds.begin(), i);
+        }
+    }
 
     void destroyPWGs() {
-        delete [] attrBuf;
+        delete [] attrBuf[0];
+		delete [] attrBuf[1];
 
         for(int i = 0; i < nSample; i++) {
             pwgs[i].destroy();
@@ -435,7 +484,7 @@ public:
 
 
     attribute_t* getAttrBuf(vertex_id_t vid) {
-        return (attribute_t*) (attrBuf + (vid * sizeof(attribute_t)));
+        return (attribute_t*) (attrBuf[currSeed%2] + (vid * sizeof(attribute_t)));
     }
     
     /**
@@ -605,6 +654,9 @@ public:
      * \param query The `vertex_query` you wish to apply to the graph.
 	 */
 	void query_on_all(vertex_query::ptr query);
+
+    /* KJH */
+	void query_on_part(vertex_query::ptr query);
     
     /**
      * \brief Return The per-thread vertex programs used by the graph engine.

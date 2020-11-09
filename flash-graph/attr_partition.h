@@ -21,18 +21,24 @@ typedef struct {
 
 class attrPart_t {
     private:
-        int seed;
         int partId;
         bool dirty;
+        bool loaded;
 
     public:
         attrPart_t();
         ~attrPart_t();
         void init(int seed, int partId, int partSize, char* attrBuf);
-        void save(int partSize, char* attrBuf);
-        void load(int partSize, char* attrBuf, bool allOrNot);
+        void save(int*fd, int seed, int partSize, char* attrBuf);
+		void save_async(int seed, int partSize, char* attrBuf);
+        void load(int*fd, int seed, int partSize, char* attrBuf, bool isAll);
         
-        void destroy();
+        void destroy(int seed);
+
+        void printTime();
+        bool isDirty() {
+            return dirty;
+        }
 };
 }
 #endif

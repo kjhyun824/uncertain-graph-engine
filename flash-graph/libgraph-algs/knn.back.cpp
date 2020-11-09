@@ -3,7 +3,7 @@
 //
 
 #ifndef VATTR_SAVE
-#define VATTR_SAVE 1
+#define VATTR_SAVE 0
 #endif
 
 #include <signal.h>
@@ -302,7 +302,7 @@ namespace
                     if (distance[key] != ~0)
                         distance_sum += distance[key];
 
-                    distance_message msg(vertex.get_id(), distance_sum);
+                    distance_message msg(distance_sum);
 
 #define PRECISION 1000
                     float r = rand() % PRECISION;
@@ -476,10 +476,6 @@ namespace
 }
 
 std::set<vertex_id_t> knn(FG_graph::ptr fg, vertex_id_t start_vertex, int k, int _nSample) {
-    std::cout << "[DEBUG] sizeof(knn_vertex) : " << sizeof(knn_vertex) << std::endl;
-    std::cout << "[DEBUG] sizeof(vattr_t*) : " << sizeof(vattr_t*) << std::endl;
-    std::cout << "[DEBUG] sizeof(vattr_t) : " << sizeof(vattr_t) << std::endl;
-    std::cout << "[DEBUG] sizeof(distribution) : " << sizeof(distribution) << std::endl;
     nResult = k;
     nSample = _nSample;
 

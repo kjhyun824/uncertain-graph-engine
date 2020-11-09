@@ -505,6 +505,11 @@ int worker_thread::process_activated_vertices(int max)
 	if (max <= 0)
 		return 0;
 
+    /* KJH
+     * TODO : Save or Load start vertices
+     * TODO : Grouping
+     * Process activated vertices in "Group"!!!
+     */
 	process_vertex_buf.resize(max);
 	int num = curr_activated_vertices->fetch(process_vertex_buf.data(), max);
 	if (num == 0) {
@@ -512,13 +517,14 @@ int worker_thread::process_activated_vertices(int max)
 		num = balancer->steal_activated_vertices(process_vertex_buf.data(),
 				max);
 	}
+
 	if (num > 0) {
 		num_activated_vertices_in_level.inc(num);
 		graph->process_vertices(num);
 	}
 
     /* KJH
-     * TODO : Call save & load
+     * Call save & load
      * Find out active vertices' partitions 
      * request attributes for the partitions.
      */
@@ -532,20 +538,13 @@ int worker_thread::process_activated_vertices(int max)
 		// in the current iteration.
 		vertex_program &curr_vprog = get_vertex_program(info.is_part());
 
-        /* KJH 
-         * Save & Load part
-         */
-        vertex_id_t vid = curr_vprog.get_vertex_id(info);
+        /*
+        vertex_id_t vid = curr_vprog.get_vertex_id(*info);
         if(partId != (vid / partSize)) {
-            /*
-            if(partId != -1) {
-                currPWG->save(partId);
-            }
-            */
-
             partId = (vid / partSize);
             currPWG->load(partId);
         }
+        */
 
 		start_run_vertex(info);
 		curr_vprog.run(*info);
@@ -555,12 +554,6 @@ int worker_thread::process_activated_vertices(int max)
 		if (!issued_reqs)
 			complete_vertex(info);
 	}
-
-    /*
-    if(partId != -1) {
-        currPWG->save(partId);
-    }
-    */
 
 	return num;
 }
